@@ -20,30 +20,50 @@ interface AuthDialogProps {
 export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
   const [loginData, setLoginData] = useState({ email: "", password: "" })
   const [signupData, setSignupData] = useState({ username: "", email: "", password: "" })
+  const [loginError, setLoginError] = useState("")
+  const [signupError, setSignupError] = useState("")
   const { login, signup, isLoading } = useAuth()
   const { toast } = useToast()
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    const success = await login(loginData.email, loginData.password)
-    if (success) {
-      toast({ title: "Welcome back!", description: "You have been logged in successfully." })
-      onOpenChange(false)
-      setLoginData({ email: "", password: "" })
-    } else {
-      toast({ title: "Login failed", description: "Please check your credentials.", variant: "destructive" })
+    setLoginError("")
+    
+    try {
+      const success = await login(loginData.email, loginData.password)
+      if (success) {
+        toast({ title: "Welcome back!", description: "You have been logged in successfully." })
+        onOpenChange(false)
+        setLoginData({ email: "", password: "" })
+      } else {
+        setLoginError("Invalid email or password")
+        toast({ title: "Login failed", description: "Please check your credentials.", variant: "destructive" })
+      }
+    } catch (error) {
+      console.error('Login error in dialog:', error)
+      setLoginError("Login failed. Please try again.")
+      toast({ title: "Login failed", description: "An error occurred. Please try again.", variant: "destructive" })
     }
   }
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
-    const success = await signup(signupData.username, signupData.email, signupData.password)
-    if (success) {
-      toast({ title: "Account created!", description: "Welcome to StackIt!" })
-      onOpenChange(false)
-      setSignupData({ username: "", email: "", password: "" })
-    } else {
-      toast({ title: "Signup failed", description: "Please try again.", variant: "destructive" })
+    setSignupError("")
+    
+    try {
+      const success = await signup(signupData.username, signupData.email, signupData.password)
+      if (success) {
+        toast({ title: "Account created!", description: "Welcome to StackIt!" })
+        onOpenChange(false)
+        setSignupData({ username: "", email: "", password: "" })
+      } else {
+        setSignupError("Signup failed. Please try again.")
+        toast({ title: "Signup failed", description: "Please try again.", variant: "destructive" })
+      }
+    } catch (error) {
+      console.error('Signup error in dialog:', error)
+      setSignupError("Signup failed. Please try again.")
+      toast({ title: "Signup failed", description: "An error occurred. Please try again.", variant: "destructive" })
     }
   }
 
@@ -85,6 +105,9 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
                   required
                 />
               </div>
+              {loginError && (
+                <p className="text-sm text-red-500">{loginError}</p>
+              )}
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Login
@@ -120,12 +143,16 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
                 <Input
                   id="signup-password"
                   type="password"
-                  placeholder="Create a password"
+                  placeholder="Create a password (min 6 characters)"
                   value={signupData.password}
                   onChange={(e) => setSignupData({ ...signupData, password: e.target.value })}
                   required
+                  minLength={6}
                 />
               </div>
+              {signupError && (
+                <p className="text-sm text-red-500">{signupError}</p>
+              )}
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Sign Up

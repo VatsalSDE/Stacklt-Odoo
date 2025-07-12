@@ -1,325 +1,515 @@
 "use client"
 
-import type React from "react"
-
-import { useState } from "react"
-import { ModernHeader } from "@/components/modern-header" // Changed to ModernHeader
+import { useState, useEffect } from "react"
+import { useParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Card, CardContent } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import { RichTextEditor } from "@/components/rich-text-editor"
-import { ChevronUp, ChevronDown, Check, MessageSquare } from "lucide-react"
-import { formatDistanceToNow } from "date-fns"
 import { useAuth } from "@/contexts/auth-context"
 import { useToast } from "@/hooks/use-toast"
-import Link from "next/link"
+import { 
+  ArrowUp, 
+  ArrowDown, 
+  CheckCircle, 
+  MessageSquare, 
+  Eye, 
+  Calendar,
+  User,
+  ThumbsUp
+} from "lucide-react"
+import { formatDistanceToNow } from "date-fns"
 
-// Mock data for the question
-const mockQuestion = {
-  id: "1",
-  title: "How to join 2 columns in a data set to make a separate column in SQL",
-  description: `I do not know the code for it as I am a beginner. As an example what I need to do is like there is a column 1 containing First name and column 2 consists of last name I want a column to combine both first name and last name.
-
-**What I've tried:**
-- Looking at SQL documentation
-- Searching online tutorials
-
-**Expected result:**
-A new column that combines first_name and last_name with a space in between.`,
-  tags: ["sql", "database"],
+interface Answer {
+  id: string
+  content: string
   author: {
-    username: "User Name",
-    avatar: "/placeholder.svg?height=40&width=40",
-  },
-  createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000),
-  voteCount: 12,
-  answers: [
-    {
-      id: "1",
-      content: `You can use the **CONCAT** function or the **||** operator to combine columns in SQL.
-
-Here are a few approaches:
-
-**Method 1: Using CONCAT function**
-\`\`\`sql
-SELECT CONCAT(first_name, ' ', last_name) AS full_name
-FROM your_table;
-\`\`\`
-
-**Method 2: Using || operator**
-\`\`\`sql
-SELECT first_name || ' ' || last_name AS full_name
-FROM your_table;
-\`\`\`
-
-**Method 3: Using + operator (SQL Server)**
-\`\`\`sql
-SELECT first_name + ' ' + last_name AS full_name
-FROM your_table;
-\`\`\``,
-      author: {
-        username: "SQLExpert",
-        avatar: "/placeholder.svg?height=40&width=40",
-      },
-      createdAt: new Date(Date.now() - 4 * 60 * 60 * 1000),
-      voteCount: 8,
-      isAccepted: true,
-    },
-    {
-      id: "2",
-      content: `Another approach is to use the **CONCAT_WS** function which handles NULL values better:
-
-\`\`\`sql
-SELECT CONCAT_WS(' ', first_name, last_name) AS full_name
-FROM your_table;
-\`\`\`
-
-This function will skip NULL values and won't add extra spaces.`,
-      author: {
-        username: "DatabaseGuru",
-        avatar: "/placeholder.svg?height=40&width=40",
-      },
-      createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
-      voteCount: 5,
-      isAccepted: false,
-    },
-  ],
+    _id: string
+    username: string
+    avatar: string
+    reputation: number
+  }
+  createdAt: string
+  isAccepted: boolean
+  voteCount: number
 }
 
-export default function QuestionPage({ params }: { params: { id: string } }) {
-  const [newAnswer, setNewAnswer] = useState("")
-  const [questionVotes, setQuestionVotes] = useState(mockQuestion.voteCount)
-  const [answerVotes, setAnswerVotes] = useState<Record<string, number>>({
-    "1": mockQuestion.answers[0].voteCount,
-    "2": mockQuestion.answers[1].voteCount,
-  })
-  const { user } = useAuth()
-  const { toast } = useToast()
+interface Question {
+  id: string
+  title: string
+  description: string
+  tags: string[]
+  author: {
+    _id: string
+    username: string
+    avatar: string
+    reputation: number
+  }
+  createdAt: string
+  updatedAt: string
+  viewCount: number
+  answerCount: number
+  voteCount: number
+  hasAcceptedAnswer: boolean
+  isHot: boolean
+  answers: Answer[]
+}
 
-  const handleVote = (type: "question" | "answer", id?: string, direction: "up" | "down") => {
-    if (!user) {
+export default function QuestionPage() {
+  const params = useParams()
+  const router = useRouter()
+  const { user, token } = useAuth()
+  const { toast } = useToast()
+  
+  const [question, setQuestion] = useState<Question | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [answerContent, setAnswerContent] = useState("")
+  const [isSubmittingAnswer, setIsSubmittingAnswer] = useState(false)
+  const [userVotes, setUserVotes] = useState<{ [key: string]: 'upvote' | 'downvote' }>({})
+
+  const questionId = params.id as string
+
+  const fetchQuestion = async () => {
+    setIsLoading(true)
+    try {
+      const response = await fetch(`/api/questions/${questionId}`)
+      if (!response.ok) {
+        throw new Error('Failed to fetch question')
+      }
+      const data = await response.json()
+      setQuestion(data.question)
+    } catch (error) {
+      console.error('Error fetching question:', error)
       toast({
-        title: "Login required",
-        description: "You need to be logged in to vote.",
+        title: "Error",
+        description: "Failed to load question. Please try again.",
         variant: "destructive",
       })
-      return
-    }
-
-    if (type === "question") {
-      setQuestionVotes((prev) => prev + (direction === "up" ? 1 : -1))
-    } else if (id) {
-      setAnswerVotes((prev) => ({
-        ...prev,
-        [id]: prev[id] + (direction === "up" ? 1 : -1),
-      }))
+    } finally {
+      setIsLoading(false)
     }
   }
 
-  const handleSubmitAnswer = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (questionId) {
+      fetchQuestion()
+    }
+  }, [questionId])
+
+  const handleVote = async (itemId: string, itemType: 'question' | 'answer', voteType: 'upvote' | 'downvote') => {
+    if (!token) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to vote.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      const endpoint = itemType === 'question' 
+        ? `/api/questions/${itemId}/vote`
+        : `/api/answers/${itemId}/vote`
+
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ voteType })
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.message || 'Failed to vote')
+      }
+
+      const data = await response.json()
+      
+      // Update the vote count
+      if (itemType === 'question' && question) {
+        setQuestion(prev => prev ? { ...prev, voteCount: data.voteCount } : null)
+      } else if (itemType === 'answer' && question) {
+        setQuestion(prev => prev ? {
+          ...prev,
+          answers: prev.answers.map(answer => 
+            answer.id === itemId 
+              ? { ...answer, voteCount: data.voteCount }
+              : answer
+          )
+        } : null)
+      }
+
+      // Update user vote state
+      setUserVotes(prev => ({
+        ...prev,
+        [itemId]: data.userVote
+      }))
+
+    } catch (error) {
+      console.error('Error voting:', error)
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to vote. Please try again.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleAcceptAnswer = async (answerId: string) => {
+    if (!token) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to accept answers.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/answers/${answerId}/accept`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.message || 'Failed to accept answer')
+      }
+
+      // Update the question state
+      setQuestion(prev => prev ? {
+        ...prev,
+        hasAcceptedAnswer: true,
+        answers: prev.answers.map(answer => ({
+          ...answer,
+          isAccepted: answer.id === answerId
+        }))
+      } : null)
+
+      toast({
+        title: "Success",
+        description: "Answer accepted successfully!",
+      })
+
+    } catch (error) {
+      console.error('Error accepting answer:', error)
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to accept answer. Please try again.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleSubmitAnswer = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!user) {
+    
+    if (!answerContent.trim()) {
       toast({
-        title: "Login required",
-        description: "You need to be logged in to post an answer.",
+        title: "Missing content",
+        description: "Please provide an answer.",
         variant: "destructive",
       })
       return
     }
 
-    if (!newAnswer.trim()) {
+    if (!token) {
       toast({
-        title: "Answer required",
-        description: "Please write your answer before submitting.",
+        title: "Authentication required",
+        description: "Please log in to post an answer.",
         variant: "destructive",
       })
       return
     }
 
-    toast({
-      title: "Answer posted!",
-      description: "Your answer has been submitted successfully.",
-    })
-    setNewAnswer("")
+    setIsSubmittingAnswer(true)
+
+    try {
+      const response = await fetch(`/api/questions/${questionId}/answers`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          content: answerContent.trim()
+        })
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.message || 'Failed to post answer')
+      }
+
+      const data = await response.json()
+      
+      // Add the new answer to the question
+      setQuestion(prev => prev ? {
+        ...prev,
+        answers: [...prev.answers, data.answer],
+        answerCount: prev.answerCount + 1
+      } : null)
+
+      setAnswerContent("")
+      
+      toast({
+        title: "Success",
+        description: "Your answer has been posted successfully!",
+      })
+
+    } catch (error) {
+      console.error('Error posting answer:', error)
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to post answer. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSubmittingAnswer(false)
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="container mx-auto px-6 py-16">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center py-10">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+            <p className="mt-2 text-muted-foreground">Loading question...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!question) {
+    return (
+      <div className="container mx-auto px-6 py-16">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center py-10">
+            <p className="text-muted-foreground text-lg">Question not found.</p>
+            <Button onClick={() => router.push('/')} className="mt-4">
+              Back to Home
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <ModernHeader /> {/* Changed to ModernHeader */}
-      <main className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
-          {/* Breadcrumb */}
-          <nav className="flex items-center space-x-2 text-sm text-muted-foreground mb-6">
-            <Link href="/" className="hover:text-foreground">
-              Questions
-            </Link>
-            <span>{">"}</span>
-            <span className="text-foreground">How to join 2...</span>
-          </nav>
-
-          {/* Question */}
-          <Card className="mb-8">
-            <CardContent className="p-6">
-              <div className="flex gap-6">
-                {/* Vote buttons */}
-                <div className="flex flex-col items-center space-y-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleVote("question", undefined, "up")}
-                    className="p-2"
-                  >
-                    <ChevronUp className="h-6 w-6" />
-                  </Button>
-                  <span className="text-lg font-semibold">{questionVotes}</span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleVote("question", undefined, "down")}
-                    className="p-2"
-                  >
-                    <ChevronDown className="h-6 w-6" />
-                  </Button>
-                </div>
-
-                {/* Question content */}
-                <div className="flex-1">
-                  <h1 className="text-2xl font-bold mb-4">{mockQuestion.title}</h1>
-
-                  <div className="prose prose-invert max-w-none mb-4">
-                    <div className="whitespace-pre-wrap">{mockQuestion.description}</div>
+    <div className="container mx-auto px-6 py-16">
+      <div className="max-w-4xl mx-auto space-y-8">
+        {/* Question */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <h1 className="text-2xl font-bold mb-2">{question.title}</h1>
+                <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-1">
+                    <Calendar className="h-4 w-4" />
+                    {formatDistanceToNow(new Date(question.createdAt), { addSuffix: true })}
                   </div>
-
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    {mockQuestion.tags.map((tag) => (
-                      <Badge key={tag} variant="secondary">
-                        {tag}
-                      </Badge>
-                    ))}
+                  <div className="flex items-center gap-1">
+                    <Eye className="h-4 w-4" />
+                    {question.viewCount} views
                   </div>
-
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <Avatar className="h-6 w-6">
-                        <AvatarImage
-                          src={mockQuestion.author.avatar || "/placeholder.svg"}
-                          alt={mockQuestion.author.username}
-                        />
-                        <AvatarFallback className="text-xs">
-                          {mockQuestion.author.username.charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="text-sm text-muted-foreground">{mockQuestion.author.username}</span>
-                      <span className="text-sm text-muted-foreground">
-                        asked {formatDistanceToNow(mockQuestion.createdAt, { addSuffix: true })}
-                      </span>
-                    </div>
+                  <div className="flex items-center gap-1">
+                    <MessageSquare className="h-4 w-4" />
+                    {question.answerCount} answers
                   </div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+              <div className="flex items-center gap-2">
+                {question.isHot && (
+                  <Badge variant="destructive">Hot</Badge>
+                )}
+                {question.hasAcceptedAnswer && (
+                  <Badge variant="default" className="bg-green-600">
+                    <CheckCircle className="h-3 w-3 mr-1" />
+                    Solved
+                  </Badge>
+                )}
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="flex gap-4">
+              {/* Voting */}
+              <div className="flex flex-col items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleVote(question.id, 'question', 'upvote')}
+                  className={`h-8 w-8 p-0 ${userVotes[question.id] === 'upvote' ? 'text-green-600' : ''}`}
+                >
+                  <ArrowUp className="h-4 w-4" />
+                </Button>
+                <span className="text-sm font-medium">{question.voteCount}</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleVote(question.id, 'question', 'downvote')}
+                  className={`h-8 w-8 p-0 ${userVotes[question.id] === 'downvote' ? 'text-red-600' : ''}`}
+                >
+                  <ArrowDown className="h-4 w-4" />
+                </Button>
+              </div>
 
-          {/* Answers */}
-          <div className="mb-8">
-            <h2 className="text-xl font-semibold mb-4">
-              {mockQuestion.answers.length} Answer{mockQuestion.answers.length !== 1 ? "s" : ""}
-            </h2>
+              {/* Content */}
+              <div className="flex-1">
+                <div className="prose max-w-none mb-6">
+                  <div dangerouslySetInnerHTML={{ __html: question.description }} />
+                </div>
+                
+                {/* Tags */}
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {question.tags.map((tag) => (
+                    <Badge key={tag} variant="secondary">
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
 
-            <div className="space-y-6">
-              {mockQuestion.answers.map((answer) => (
-                <Card key={answer.id} className={answer.isAccepted ? "border-green-500" : ""}>
-                  <CardContent className="p-6">
-                    <div className="flex gap-6">
-                      {/* Vote buttons */}
-                      <div className="flex flex-col items-center space-y-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleVote("answer", answer.id, "up")}
-                          className="p-2"
-                        >
-                          <ChevronUp className="h-6 w-6" />
-                        </Button>
-                        <span className="text-lg font-semibold">{answerVotes[answer.id]}</span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleVote("answer", answer.id, "down")}
-                          className="p-2"
-                        >
-                          <ChevronDown className="h-6 w-6" />
-                        </Button>
+                {/* Author */}
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <User className="h-4 w-4" />
+                  Asked by
+                  <Avatar className="h-6 w-6">
+                    <AvatarImage src={question.author.avatar} />
+                    <AvatarFallback>{question.author.username[0]}</AvatarFallback>
+                  </Avatar>
+                  <span className="font-medium">{question.author.username}</span>
+                  <span>({question.author.reputation} reputation)</span>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Answers */}
+        <div className="space-y-4">
+          <h2 className="text-xl font-semibold">
+            {question.answerCount} Answer{question.answerCount !== 1 ? 's' : ''}
+          </h2>
+          
+          {question.answers.map((answer) => (
+            <Card key={answer.id} className={answer.isAccepted ? 'border-green-500 bg-green-50/50' : ''}>
+              <CardContent className="pt-6">
+                <div className="flex gap-4">
+                  {/* Voting */}
+                  <div className="flex flex-col items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleVote(answer.id, 'answer', 'upvote')}
+                      className={`h-8 w-8 p-0 ${userVotes[answer.id] === 'upvote' ? 'text-green-600' : ''}`}
+                    >
+                      <ArrowUp className="h-4 w-4" />
+                    </Button>
+                    <span className="text-sm font-medium">{answer.voteCount}</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleVote(answer.id, 'answer', 'downvote')}
+                      className={`h-8 w-8 p-0 ${userVotes[answer.id] === 'downvote' ? 'text-red-600' : ''}`}
+                    >
+                      <ArrowDown className="h-4 w-4" />
+                    </Button>
+                  </div>
+
+                  {/* Content */}
+                  <div className="flex-1">
+                    <div className="prose max-w-none mb-4">
+                      <div dangerouslySetInnerHTML={{ __html: answer.content }} />
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <User className="h-4 w-4" />
+                        Answered by
+                        <Avatar className="h-6 w-6">
+                          <AvatarImage src={answer.author.avatar} />
+                          <AvatarFallback>{answer.author.username[0]}</AvatarFallback>
+                        </Avatar>
+                        <span className="font-medium">{answer.author.username}</span>
+                        <span>({answer.author.reputation} reputation)</span>
+                        <span>• {formatDistanceToNow(new Date(answer.createdAt), { addSuffix: true })}</span>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
                         {answer.isAccepted && (
-                          <div className="text-green-500">
-                            <Check className="h-6 w-6" />
-                          </div>
+                          <Badge variant="default" className="bg-green-600">
+                            <CheckCircle className="h-3 w-3 mr-1" />
+                            Accepted
+                          </Badge>
+                        )}
+                        {user && question.author._id === user.id && !answer.isAccepted && !question.hasAcceptedAnswer && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleAcceptAnswer(answer.id)}
+                          >
+                            <ThumbsUp className="h-3 w-3 mr-1" />
+                            Accept
+                          </Button>
                         )}
                       </div>
-
-                      {/* Answer content */}
-                      <div className="flex-1">
-                        <div className="prose prose-invert max-w-none mb-4">
-                          <div className="whitespace-pre-wrap">{answer.content}</div>
-                        </div>
-
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-2">
-                            <Avatar className="h-6 w-6">
-                              <AvatarImage
-                                src={answer.author.avatar || "/placeholder.svg"}
-                                alt={answer.author.username}
-                              />
-                              <AvatarFallback className="text-xs">
-                                {answer.author.username.charAt(0).toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
-                            <span className="text-sm text-muted-foreground">{answer.author.username}</span>
-                            <span className="text-sm text-muted-foreground">
-                              answered {formatDistanceToNow(answer.createdAt, { addSuffix: true })}
-                            </span>
-                          </div>
-
-                          {answer.isAccepted && (
-                            <Badge variant="default" className="bg-green-500">
-                              Accepted Answer
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
 
-          {/* Submit Answer */}
+        {/* Post Answer */}
+        {user && (
           <Card>
-            <CardContent className="p-6">
-              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                <MessageSquare className="h-5 w-5" />
-                Submit Your Answer
-              </h3>
-
+            <CardHeader>
+              <h3 className="text-lg font-semibold">Your Answer</h3>
+            </CardHeader>
+            <CardContent>
               <form onSubmit={handleSubmitAnswer} className="space-y-4">
                 <RichTextEditor
-                  value={newAnswer}
-                  onChange={setNewAnswer}
-                  placeholder="Write your answer here. Be specific and provide examples if possible."
+                  value={answerContent}
+                  onChange={setAnswerContent}
+                  placeholder="Write your answer here..."
                 />
-
                 <div className="flex justify-end">
-                  <Button type="submit" disabled={!user}>
-                    {user ? "Submit Answer" : "Login to Answer"}
+                  <Button 
+                    type="submit" 
+                    disabled={isSubmittingAnswer}
+                  >
+                    {isSubmittingAnswer ? "Posting..." : "Post Answer"}
                   </Button>
                 </div>
               </form>
             </CardContent>
           </Card>
-        </div>
-      </main>
+        )}
+
+        {!user && (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center py-8">
+                <p className="text-muted-foreground mb-4">
+                  Please log in to post an answer.
+                </p>
+                <Button onClick={() => router.push('/')}>
+                  Log In
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
     </div>
   )
 }

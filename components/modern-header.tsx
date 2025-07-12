@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Bell, Search, Menu, Sparkles } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import { AuthDialog } from "@/components/auth-dialog"
+import { NotificationDropdown } from "@/components/notification-dropdown"
 import { Input } from "@/components/ui/input"
 import {
   DropdownMenu,
@@ -17,6 +18,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
+import { useRouter } from "next/navigation"
 
 interface ModernHeaderProps {
   onSearch: (query: string) => void // Add onSearch prop
@@ -27,6 +29,7 @@ export function ModernHeader({ onSearch }: ModernHeaderProps) {
   const [showAuthDialog, setShowAuthDialog] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [scrolled, setScrolled] = useState(false)
+  const router = useRouter();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -79,19 +82,7 @@ export function ModernHeader({ onSearch }: ModernHeaderProps) {
           {/* Ask Question button moved to main content */}
 
           {/* Notifications */}
-          {user && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="relative h-12 w-12 rounded-full hover:bg-primary/10 transition-all duration-300 btn-hover-lift"
-            >
-              <Bell className="h-6 w-6" />
-              <Badge className="absolute -top-1 -right-1 h-6 w-6 flex items-center justify-center p-0 text-xs bg-gradient-to-r from-red-500 to-pink-500 animate-pulse">
-                3
-              </Badge>
-              <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping opacity-75"></div>
-            </Button>
-          )}
+          {user && <NotificationDropdown />}
 
           {/* User Menu or Login */}
           {user ? (
@@ -126,14 +117,11 @@ export function ModernHeader({ onSearch }: ModernHeaderProps) {
                   </div>
                 </div>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="hover:bg-primary/10">
+                <DropdownMenuItem className="hover:bg-primary/10" onClick={() => router.push("/profile")}> 
                   <span>Profile & Settings</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem className="hover:bg-primary/10">
+                <DropdownMenuItem className="hover:bg-primary/10" onClick={() => router.push("/your-questions")}> 
                   <span>Your Questions</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem className="hover:bg-primary/10">
-                  <span>Bookmarks</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={logout} className="hover:bg-red-500/10 text-red-500">

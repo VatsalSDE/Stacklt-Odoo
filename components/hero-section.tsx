@@ -6,7 +6,11 @@ import { useState } from "react"
 import { AskQuestionDialog } from "@/components/ask-question-dialog"
 import { useAuth } from "@/contexts/auth-context"
 
-export function HeroSection() {
+interface HeroSectionProps {
+  onExploreQuestions?: () => void
+}
+
+export function HeroSection({ onExploreQuestions }: HeroSectionProps) {
   const [showAskDialog, setShowAskDialog] = useState(false)
   const { user } = useAuth()
 
@@ -81,6 +85,7 @@ export function HeroSection() {
             </Button>
 
             <Button
+              onClick={onExploreQuestions}
               variant="outline"
               size="lg"
               className="border-2 border-primary/30 hover:border-primary/60 bg-background/50 backdrop-blur-sm px-8 py-4 rounded-full font-semibold transition-all duration-300 btn-hover-lift text-lg"
