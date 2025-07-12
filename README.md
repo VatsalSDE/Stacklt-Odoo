@@ -25,7 +25,7 @@ A modern, collaborative question-and-answer platform built with Next.js, TypeScr
 ### User Roles
 - **Guest**: View all questions and answers
 - **User**: Register, login, post questions/answers, vote
-- **Admin**: Moderate content (future enhancement)
+
 
 ## 🛠️ Tech Stack
 
@@ -158,46 +158,6 @@ The platform uses a modern, responsive design with:
 - Role-based access control
 - CSRF protection (built into Next.js)
 
-## 🚀 Deployment
 
-### Vercel (Recommended)
-1. Connect your GitHub repository to Vercel
-2. Set environment variables in Vercel dashboard
-3. Deploy automatically on push to main branch
 
-### Other Platforms
-- Set up MongoDB connection string
-- Configure environment variables
-- Build and deploy the Next.js application
 
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
-
-## 📝 License
-
-This project is licensed under the MIT License.
-
-## 🆘 Support
-
-If you encounter any issues:
-1. Check the console for error messages
-2. Verify MongoDB connection
-3. Ensure all environment variables are set
-4. Check that all dependencies are installed
-
-## 🎯 Future Enhancements
-
-- Real-time chat/comments
-- File upload support
-- Advanced search with filters
-- User profiles and reputation system
-- Admin moderation tools
-- Email notifications
-- Social features (following, bookmarks)
-- API rate limiting
-- Caching layer 
