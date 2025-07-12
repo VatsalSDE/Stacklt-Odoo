@@ -1,88 +1,100 @@
 "use client"
 
-import { useCallback } from "react"
-import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
-import { Bold, Italic, Strikethrough, List, ListOrdered, Link, ImageIcon, Smile } from "lucide-react"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import React, { useEffect } from "react";
+import { EditorContent, useEditor } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
+import Bold from "@tiptap/extension-bold";
+import Italic from "@tiptap/extension-italic";
+import Strike from "@tiptap/extension-strike";
+import BulletList from "@tiptap/extension-bullet-list";
+import OrderedList from "@tiptap/extension-ordered-list";
+import ListItem from "@tiptap/extension-list-item";
+import Link from "@tiptap/extension-link";
+import Image from "@tiptap/extension-image";
+import Emoji from "@tiptap/extension-emoji";
+import TextAlign from "@tiptap/extension-text-align";
+import Placeholder from "@tiptap/extension-placeholder";
+import { Button } from "@/components/ui/button";
+import { Smile, Bold as BoldIcon, Italic as ItalicIcon, Strikethrough, List, ListOrdered, Link as LinkIcon, ImageIcon, AlignLeft, AlignCenter, AlignRight } from "lucide-react";
 
 interface RichTextEditorProps {
-  value: string
-  onChange: (value: string) => void
-  placeholder?: string
-  className?: string
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  className?: string;
 }
 
 export function RichTextEditor({ value, onChange, placeholder, className }: RichTextEditorProps) {
-  const insertText = useCallback(
-    (before: string, after = "") => {
-      const textarea = document.querySelector("textarea") as HTMLTextAreaElement
-      if (!textarea) return
-
-      const start = textarea.selectionStart
-      const end = textarea.selectionEnd
-      const selectedText = value.substring(start, end)
-
-      const newText = value.substring(0, start) + before + selectedText + after + value.substring(end)
-      onChange(newText)
-
-      // Reset cursor position
-      setTimeout(() => {
-        textarea.focus()
-        textarea.setSelectionRange(start + before.length, start + before.length + selectedText.length)
-      }, 0)
+  const editor = useEditor({
+    extensions: [
+      StarterKit,
+      Bold,
+      Italic,
+      Strike,
+      BulletList,
+      OrderedList,
+      ListItem,
+      Link.configure({ openOnClick: false }),
+      Image,
+      Emoji,
+      TextAlign.configure({ types: ["heading", "paragraph"] }),
+      Placeholder.configure({ placeholder: placeholder || "Start typing..." }),
+    ],
+    content: value,
+    onUpdate: ({ editor }) => {
+      onChange(editor.getHTML());
     },
-    [value, onChange],
-  )
+    editorProps: {
+      attributes: {
+        class: "min-h-[200px] p-4 outline-none bg-transparent",
+      },
+    },
+  });
 
-  const formatButtons = [
-    { icon: Bold, action: () => insertText("**", "**"), tooltip: "Bold" },
-    { icon: Italic, action: () => insertText("*", "*"), tooltip: "Italic" },
-    { icon: Strikethrough, action: () => insertText("~~", "~~"), tooltip: "Strikethrough" },
-    { icon: List, action: () => insertText("\n- "), tooltip: "Bullet List" },
-    { icon: ListOrdered, action: () => insertText("\n1. "), tooltip: "Numbered List" },
-    { icon: Link, action: () => insertText("[", "](url)"), tooltip: "Link" },
-    { icon: ImageIcon, action: () => insertText("![alt](", ")"), tooltip: "Image" },
-    { icon: Smile, action: () => insertText("😊"), tooltip: "Emoji" },
-  ]
+  useEffect(() => {
+    if (editor && value !== editor.getHTML()) {
+      editor.commands.setContent(value || "", false);
+    }
+    // eslint-disable-next-line
+  }, [value]);
+
+  if (!editor) return <div className="border rounded-xl bg-background/50 min-h-[200px] p-4 animate-pulse" />;
+
+  // Image upload handler
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        editor.chain().focus().setImage({ src: reader.result }).run();
+      }
+    };
+    reader.readAsDataURL(file);
+  };
 
   return (
-    <div
-      className={`border rounded-xl bg-background/50 backdrop-blur-sm transition-all duration-300 focus-within:ring-2 focus-within:ring-primary/50 focus-within:border-primary/50 ${className}`}
-    >
-      <div className="flex flex-wrap gap-1 p-3 border-b bg-muted/30 rounded-t-xl">
-        <TooltipProvider>
-          {formatButtons.map((button, index) => (
-            <Tooltip key={index}>
-              <TooltipTrigger asChild>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={button.action}
-                  className="h-8 w-8 p-0 hover:bg-primary/10 transition-colors duration-200"
-                >
-                  <button.icon className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>{button.tooltip}</p>
-              </TooltipContent>
-            </Tooltip>
-          ))}
-        </TooltipProvider>
+    <div className={`border rounded-xl bg-background/50 backdrop-blur-sm transition-all duration-300 focus-within:ring-2 focus-within:ring-primary/50 focus-within:border-primary/50 ${className}`}>
+      <div className="flex flex-wrap gap-1 p-3 border-b bg-muted/30 rounded-t-xl items-center">
+        <Button type="button" variant="ghost" size="sm" onClick={() => editor.chain().focus().toggleBold().run()} className={editor.isActive('bold') ? 'bg-primary/10' : ''}><BoldIcon className="h-4 w-4" /></Button>
+        <Button type="button" variant="ghost" size="sm" onClick={() => editor.chain().focus().toggleItalic().run()} className={editor.isActive('italic') ? 'bg-primary/10' : ''}><ItalicIcon className="h-4 w-4" /></Button>
+        <Button type="button" variant="ghost" size="sm" onClick={() => editor.chain().focus().toggleStrike().run()} className={editor.isActive('strike') ? 'bg-primary/10' : ''}><Strikethrough className="h-4 w-4" /></Button>
+        <Button type="button" variant="ghost" size="sm" onClick={() => editor.chain().focus().toggleBulletList().run()} className={editor.isActive('bulletList') ? 'bg-primary/10' : ''}><List className="h-4 w-4" /></Button>
+        <Button type="button" variant="ghost" size="sm" onClick={() => editor.chain().focus().toggleOrderedList().run()} className={editor.isActive('orderedList') ? 'bg-primary/10' : ''}><ListOrdered className="h-4 w-4" /></Button>
+        <Button type="button" variant="ghost" size="sm" onClick={() => {
+          const url = prompt("Enter URL");
+          if (url) editor.chain().focus().setLink({ href: url }).run();
+        }} className={editor.isActive('link') ? 'bg-primary/10' : ''}><LinkIcon className="h-4 w-4" /></Button>
+        <label className="inline-flex items-center cursor-pointer">
+          <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+          <span><Button type="button" variant="ghost" size="sm"><ImageIcon className="h-4 w-4" /></Button></span>
+        </label>
+        <Button type="button" variant="ghost" size="sm" onClick={() => editor.chain().focus().insertContent('😊').run()}><Smile className="h-4 w-4" /></Button>
+        <Button type="button" variant="ghost" size="sm" onClick={() => editor.chain().focus().setTextAlign('left').run()} className={editor.isActive({ textAlign: 'left' }) ? 'bg-primary/10' : ''}><AlignLeft className="h-4 w-4" /></Button>
+        <Button type="button" variant="ghost" size="sm" onClick={() => editor.chain().focus().setTextAlign('center').run()} className={editor.isActive({ textAlign: 'center' }) ? 'bg-primary/10' : ''}><AlignCenter className="h-4 w-4" /></Button>
+        <Button type="button" variant="ghost" size="sm" onClick={() => editor.chain().focus().setTextAlign('right').run()} className={editor.isActive({ textAlign: 'right' }) ? 'bg-primary/10' : ''}><AlignRight className="h-4 w-4" /></Button>
       </div>
-
-      <Textarea
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="min-h-[200px] border-0 resize-none focus-visible:ring-0 rounded-t-none rounded-b-xl bg-transparent p-4"
-        onSelect={(e) => {
-          const target = e.target as HTMLTextAreaElement
-          // This part is for internal state if needed, not directly affecting the input value
-        }}
-      />
+      <EditorContent editor={editor} />
     </div>
-  )
+  );
 }
