@@ -69,11 +69,7 @@ export function ModernHeader({ onSearch }: ModernHeaderProps) {
               onChange={handleSearchChange}
               className="pl-12 h-12 rounded-full border-2 border-transparent bg-background/50 backdrop-blur-sm transition-all duration-300 focus:border-primary/50 focus:bg-background/80 focus:shadow-lg focus:shadow-primary/20"
             />
-            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-              <kbd className="pointer-events-none inline-flex h-6 select-none items-center gap-1 rounded border bg-muted px-2 font-mono text-xs font-medium text-muted-foreground opacity-100">
-                <span className="text-xs">⌘</span>K
-              </kbd>
-            </div>
+           
           </div>
         </div>
 

@@ -90,16 +90,7 @@ export function HeroSection() {
           </div>
 
           {/* Trust indicators */}
-          <div className="pt-12">
-            <p className="text-sm text-muted-foreground mb-6">Trusted by developers from</p>
-            <div className="flex flex-wrap justify-center items-center gap-8 opacity-60">
-              <div className="text-2xl font-bold">Google</div>
-              <div className="text-2xl font-bold">Microsoft</div>
-              <div className="text-2xl font-bold">Meta</div>
-              <div className="text-2xl font-bold">Netflix</div>
-              <div className="text-2xl font-bold">Spotify</div>
-            </div>
-          </div>
+       
         </div>
       </div>
 

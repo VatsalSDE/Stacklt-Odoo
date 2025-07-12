@@ -244,24 +244,8 @@ export default function HomePage() {
             </div>
           )}
 
-          {/* Call to action */}
-          <div className="text-center mt-20 p-8 rounded-2xl bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/20">
-            <Sparkles className="h-12 w-12 mx-auto mb-4 text-purple-400 animate-pulse" />
-            <h3 className="text-2xl font-bold mb-2 bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent">
-              Can't find what you're looking for?
-            </h3>
-            <p className="text-muted-foreground mb-6">
-              Ask your question and get help from our amazing community of developers.
-            </p>
-            <Button
-              size="lg"
-              className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold px-8 py-4 rounded-full shadow-xl hover:shadow-2xl transition-all duration-300 btn-hover-lift"
-              onClick={() => setShowAskDialog(true)} // Ensure this also opens the dialog
-              // Removed disabled={!user} for testing purposes
-            >
-              Ask Your Question
-            </Button>
-          </div>
+       
+         
           <AskQuestionDialog open={showAskDialog} onOpenChange={setShowAskDialog} />
         </div>
       </main>
